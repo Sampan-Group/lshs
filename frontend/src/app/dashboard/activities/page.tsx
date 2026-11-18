@@ -637,7 +637,7 @@ export default function ActivitiesPage() {
               <button
                 onClick={() =>
                   setPage(Math.min(pagination.totalPages, pagination.page + 1))
-                }s
+                }
                 disabled={pagination.page === pagination.totalPages}
                 className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
