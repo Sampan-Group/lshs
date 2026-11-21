@@ -13,7 +13,11 @@ gsap.registerPlugin(ScrollTrigger);
 // ─── Data ──────────────────────────────────────────
 const usefulLinks = [
   { label: "CIPS Courses", href: "/courses" },
-  { label: "Admission Form", external: true, href: "https://forms.gle/kHkicZ6TaHQRoMck6" },
+  {
+    label: "Admission Form",
+    external: true,
+    href: "https://forms.gle/kHkicZ6TaHQRoMck6",
+  },
   { label: "Learn About Us", href: "/about" },
   { label: "Get in Touch", href: "/contact" },
 ];
@@ -49,7 +53,7 @@ const integrityInfo = [
 const bottomLinks = [
   { label: "Privacy Policy", href: "/privacy" },
   { label: "Terms & Conditions", href: "/terms" },
-  { label: "Return & Refund Policy", href: "/refund" },
+  { label: "Return & Refund Policy.", href: "/refund" },
 ];
 
 // ─── Component ─────────────────────────────────────
