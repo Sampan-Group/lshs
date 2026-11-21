@@ -53,7 +53,7 @@ const integrityInfo = [
 const bottomLinks = [
   { label: "Privacy Policy", href: "/privacy" },
   { label: "Terms & Conditions", href: "/terms" },
-  { label: "Return & Refund Policy.", href: "/refund" },
+  { label: "Return & Refund Policy", href: "/refund" },
 ];
 
 // ─── Component ─────────────────────────────────────
