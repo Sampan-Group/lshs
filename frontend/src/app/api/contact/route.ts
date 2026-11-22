@@ -55,7 +55,7 @@ export async function POST(req: Request) {
 
     const mailOptions = {
       from: `"LSHS Website" <${process.env.EMAIL_USER}>`,
-      to: process.env.CONTACT_RECEIVER_EMAIL,
+      to: "londonschoolofficial@gmail.com",
       subject: "New Contact Page Enquiry - London School of Higher Studies",
       html: `
         <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">

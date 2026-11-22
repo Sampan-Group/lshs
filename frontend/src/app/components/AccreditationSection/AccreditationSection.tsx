@@ -97,12 +97,12 @@ export default function AccreditationSection() {
             >
               {/* Formal Document Frame */}
               <div className="relative bg-slate-50 p-3 shadow-xl border border-slate-200 transition-all duration-300 hover:border-[#0B73B9]/30 hover:shadow-2xl">
-                {/* Image Placeholder - Replace src with your actual license image */}
-                <div className="relative aspect-[4/5] w-full bg-slate-100 overflow-hidden">
+                {/* Current CIPS approval certificate */}
+                <div className="relative aspect-[595/842] w-full bg-slate-100 overflow-hidden">
                   <img
-                    src="/certificate/certificate.webp" 
-                    alt="LSHS CIPS Approved Centre License"
-                    className="w-full h-full object-cover"
+                    src="/certificate/cips-approved-centre-2027.webp"
+                    alt="LSHS CIPS Approved Centre certificate, valid until November 2027"
+                    className="w-full h-full object-contain"
                   />
                 </div>
 
@@ -223,8 +223,8 @@ export default function AccreditationSection() {
             onClick={(e) => e.stopPropagation()}
           >
             <img
-              src="/certificate/certificate.webp" // <-- UPDATE YOUR IMAGE PATH HERE
-              alt="LSHS CIPS Approved Centre License Full View"
+              src="/certificate/cips-approved-centre-2027.webp"
+              alt="LSHS CIPS Approved Centre certificate, valid until November 2027, full view"
               className="max-w-[90vw] max-h-[90vh] object-contain shadow-2xl border border-white/10"
             />
           </div>
