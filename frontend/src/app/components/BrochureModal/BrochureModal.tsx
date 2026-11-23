@@ -40,8 +40,8 @@ const MODAL_CONFIG = {
       "Thank you for your interest in London School of Higher Studies. Your course brochure is now available to download.",
     downloadCardTitle: "CIPS Course Brochure",
     downloadCardSubtitle: "PDF • Course Information • Syllabus • Fees",
-    fileName: "LSHS_CIPS_Brochure.pdf",
-    filePath: "/brochure/LSHS_CIPS_Brochure.pdf",
+    fileName: "Course_Brochure_LSHS.pdf",
+    filePath: "/brochure/Course_Brochure_LSHS.pdf",
     apiEndpoint: "/api/brochure",
   },
   price: {
@@ -200,7 +200,7 @@ export default function BrochureModal() {
                 ))}
               </div>
               <span className="text-xs font-semibold text-white/80">
-               93% pass rate in CIPS exams
+                93% pass rate in CIPS exams
               </span>
             </div>
             <div className="inline-flex items-center gap-2 bg-white/5 px-4 py-2.5 rounded-lg border border-white/10">
