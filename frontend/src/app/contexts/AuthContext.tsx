@@ -4,6 +4,8 @@ import {
   createContext,
   useContext,
   useEffect,
+  useCallback,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -24,16 +26,19 @@ type AuthContextValue = {
   user: AuthUser | null
   loading: boolean
   signOut: () => Promise<void>
+  completeSignIn: (user: AuthUser) => void
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   loading: true,
   signOut: async () => {},
+  completeSignIn: () => {},
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
+  const authRequest = useRef(0)
   const [loading, setLoading] = useState(
     Boolean(isFirebaseConfigured && firebaseAuth),
   )
@@ -54,11 +59,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
       if (!mounted) return
+      const request = ++authRequest.current
 
       if (firebaseUser) {
         try {
           const userData = await fetchCurrentUser()
-          if (!mounted) return
+          if (!mounted || request !== authRequest.current) return
 
           if (userData) {
             setUser(userData)
@@ -68,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(null)
           }
         } catch {
-          if (!mounted) return
+          if (!mounted || request !== authRequest.current) return
           setUser(null)
         }
       } else {
@@ -88,13 +94,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Firebase can emit before the backend has set its session cookie.
+  // Prefer the user returned by the completed backend sign-in request.
+  const completeSignIn = useCallback((userData: AuthUser) => {
+    authRequest.current++
+    setUser(userData)
+    setLoading(false)
+  }, [])
+
   const signOut = async () => {
     await signOutUser()
+    authRequest.current++
     setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signOut, completeSignIn }}>
       {children}
     </AuthContext.Provider>
   )

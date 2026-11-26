@@ -54,7 +54,7 @@ function getPasswordStrength(pw: string): { score: number; label: string; color:
 
 export default function AuthPage() {
   const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, completeSignIn } = useAuth()
   const pageRef = useRef<HTMLDivElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
@@ -211,8 +211,9 @@ export default function AuthPage() {
       }
       setStep("authenticating")
       try {
-        await authenticateUser("signin", normalizeEmail(email), password)
-        router.push("/dashboard")
+        const signedInUser = await authenticateUser("signin", normalizeEmail(email), password)
+        completeSignIn(signedInUser)
+        router.replace("/dashboard")
       } catch (err) {
         setError(friendlyAuthError(err))
         setStep("signin")
@@ -235,8 +236,9 @@ export default function AuthPage() {
       }
       setStep("authenticating")
       try {
-        await authenticateUser("signup", normalizeEmail(email), password, name.trim())
-        router.push("/dashboard")
+        const signedInUser = await authenticateUser("signup", normalizeEmail(email), password, name.trim())
+        completeSignIn(signedInUser)
+        router.replace("/dashboard")
       } catch (err) {
         setError(friendlyAuthError(err))
         setStep("signup")

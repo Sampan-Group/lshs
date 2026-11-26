@@ -1,0 +1,402 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                  Int                 @id @default(autoincrement())
+  firebaseUid         String?             @unique
+  name                String
+  email               String              @unique
+  createdAt           DateTime            @default(now())
+  password            String
+  role                Role                @default(STUDENT)
+  updatedAt           DateTime            @updatedAt
+  isActive            Boolean             @default(true)
+  firstName           String?
+  lastName            String?
+  activities          LeadActivity[]
+  assignmentsBy       LeadAssignment[]    @relation("AssignmentAssignedBy")
+  assignmentsAssigned LeadAssignment[]    @relation("AssignmentAssignedTo")
+  followUpsAssigned   LeadFollowUp[]      @relation("FollowUpAssignedTo")
+  notes               LeadNote[]
+  stageChanges        LeadStageHistory[]
+  statusChanges       LeadStatusHistory[]
+  leadsAssigned       Lead[]              @relation("LeadAssignedTo")
+  paymentRequests      PaymentRequest[]    @relation("PaymentRequestCreatedBy")
+
+  @@index([role])
+}
+
+model LeadSource {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  code      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  leads     Lead[]
+
+  @@map("lead_sources")
+}
+
+model Course {
+  id         Int                   @id @default(autoincrement())
+  title      String
+  code       String                @unique
+  category   String?
+  tuitionFee Decimal?              @db.Decimal(10, 2)
+  isActive   Boolean               @default(true)
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+  interests  LeadProgramInterest[]
+  leads      Lead[]
+
+  @@map("courses")
+}
+
+model Lead {
+  id                  Int                   @id @default(autoincrement())
+  phone               String?
+  email               String?
+  city                String?
+  company             String?
+  courseInterest      String?
+  status              LeadStatus            @default(ACTIVE)
+  lostReason          LostReason?
+  assignedToId        Int?
+  facebookLeadId      String?               @unique
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  courseId            Int?
+  firstName           String
+  lastName            String?
+  country             String?
+  sourceId            Int?
+  externalLeadId      String?
+  highestEducation    EducationLevel?
+  jobTitle            String?
+  workExperienceYears Int?
+  stage               LeadStage             @default(NEW)
+  temperature         LeadTemperature?
+  priority            LeadPriority?
+  quality             LeadQuality?
+  lostNote            String?
+  convertedAt         DateTime?
+  deletedAt           DateTime?
+  activities          LeadActivity[]
+  assignments         LeadAssignment[]
+  followUps           LeadFollowUp[]
+  notes               LeadNote[]
+  programInterests    LeadProgramInterest[]
+  stageHistory        LeadStageHistory[]
+  statusHistory       LeadStatusHistory[]
+  paymentRequests     PaymentRequest[]
+  assignedTo          User?                 @relation("LeadAssignedTo", fields: [assignedToId], references: [id])
+  course              Course?               @relation(fields: [courseId], references: [id])
+  source              LeadSource?           @relation(fields: [sourceId], references: [id])
+
+  @@index([email])
+  @@index([phone])
+  @@index([status])
+  @@index([stage])
+  @@index([temperature])
+  @@index([priority])
+  @@index([quality])
+  @@index([assignedToId])
+  @@index([sourceId])
+  @@index([country])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@index([externalLeadId])
+  @@map("leads")
+}
+
+model LeadProgramInterest {
+  id        Int      @id @default(autoincrement())
+  leadId    Int
+  courseId  Int
+  createdAt DateTime @default(now())
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@unique([leadId, courseId])
+  @@index([courseId])
+  @@map("lead_program_interests")
+}
+
+model LeadAssignment {
+  id           Int      @id @default(autoincrement())
+  leadId       Int
+  assignedToId Int
+  assignedById Int?
+  assignedAt   DateTime @default(now())
+  note         String?
+  assignedBy   User?    @relation("AssignmentAssignedBy", fields: [assignedById], references: [id])
+  assignedTo   User     @relation("AssignmentAssignedTo", fields: [assignedToId], references: [id])
+  lead         Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([assignedToId])
+  @@map("lead_assignments")
+}
+
+model LeadActivity {
+  id              Int                 @id @default(autoincrement())
+  leadId          Int
+  userId          Int?
+  type            LeadActivityType
+  result          LeadActivityResult?
+  description     String?
+  durationSeconds Int?
+  metadata        Json?
+  createdAt       DateTime            @default(now())
+  lead            Lead                @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user            User?               @relation(fields: [userId], references: [id])
+
+  @@index([leadId])
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("lead_activities")
+}
+
+model LeadFollowUp {
+  id             Int            @id @default(autoincrement())
+  leadId         Int
+  assignedToId   Int?
+  followUpNumber Int
+  type           FollowUpType   @default(CALL)
+  scheduledAt    DateTime
+  completedAt    DateTime?
+  status         FollowUpStatus @default(PENDING)
+  outcome        String?
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  nextFollowUpAt DateTime?
+  assignedTo     User?          @relation("FollowUpAssignedTo", fields: [assignedToId], references: [id])
+  lead           Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@unique([leadId, followUpNumber])
+  @@index([leadId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("lead_follow_ups")
+}
+
+model LeadNote {
+  id        Int      @id @default(autoincrement())
+  leadId    Int
+  userId    Int?
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([leadId])
+  @@index([userId])
+  @@map("lead_notes")
+}
+
+model LeadStatusHistory {
+  id          Int         @id @default(autoincrement())
+  leadId      Int
+  oldStatus   LeadStatus?
+  newStatus   LeadStatus
+  changedById Int?
+  reason      String?
+  lostReason  LostReason?
+  lostNote    String?
+  createdAt   DateTime    @default(now())
+  changedBy   User?       @relation(fields: [changedById], references: [id])
+  lead        Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([newStatus])
+  @@map("lead_status_history")
+}
+
+model LeadStageHistory {
+  id          Int        @id @default(autoincrement())
+  leadId      Int
+  oldStage    LeadStage?
+  newStage    LeadStage
+  changedById Int?
+  reason      String?
+  createdAt   DateTime   @default(now())
+  changedBy   User?      @relation(fields: [changedById], references: [id])
+  lead        Lead       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([newStage])
+  @@map("lead_stage_history")
+}
+
+enum Role {
+  ADMIN
+  SALES_PERSON
+  INSTRUCTOR
+  STUDENT
+  MANAGER
+}
+
+enum LeadStage {
+  NEW
+  INITIAL_CONTACT
+  FOLLOW_UP
+  QUALIFIED
+  INTERESTED
+  APPLICATION
+  BOOKING
+  WON
+  LOST
+}
+
+enum LeadStatus {
+  ACTIVE
+  CONVERTED
+  LOST
+  NO_RESPONSE
+  NOT_INTERESTED
+  INVALID
+}
+
+enum LeadTemperature {
+  HOT
+  WARM
+  COLD
+}
+
+enum LeadPriority {
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum LeadQuality {
+  TOP_QUALITY
+  HIGH_QUALITY
+  MEDIUM_QUALITY
+  LOW_QUALITY
+  IRRELEVANT
+}
+
+enum EducationLevel {
+  HIGH_SCHOOL
+  DIPLOMA
+  BACHELORS
+  MASTERS
+  PHD
+  OTHER
+}
+
+enum LeadActivityType {
+  CALL
+  WHATSAPP
+  EMAIL
+  SMS
+  MEETING
+  NOTE
+  STATUS_CHANGE
+  STAGE_CHANGE
+  ASSIGNMENT
+  OTHER
+}
+
+enum LeadActivityResult {
+  CONNECTED
+  NO_RESPONSE
+  RESPONDED
+  INVALID
+  PROVIDED_INFORMATION
+  OTHER
+}
+
+enum FollowUpType {
+  CALL
+  WHATSAPP
+  EMAIL
+  SMS
+  MEETING
+  OTHER
+}
+
+enum FollowUpStatus {
+  PENDING
+  COMPLETED
+  MISSED
+  CANCELLED
+}
+
+enum LostReason {
+  NO_RESPONSE
+  NOT_INTERESTED
+  INVALID_INFO
+  DUPLICATE
+  PRICE
+  OTHER
+}
+
+enum PaymentPurpose {
+  LEVEL_4_INSTALLMENT
+  EXAM_FEE
+}
+
+enum PaymentRequestStatus {
+  OPEN
+  PAID
+  CANCELLED
+  REVIEW
+}
+
+enum PaymentAttemptStatus {
+  INITIATED
+  PAID
+  FAILED
+  CANCELLED
+  REVIEW
+}
+
+model PaymentRequest {
+  id          String               @id @default(cuid())
+  tokenHash   String               @unique
+  leadId      Int
+  createdById Int
+  purpose     PaymentPurpose
+  description String?
+  amountUsd   Decimal              @db.Decimal(10, 2)
+  status      PaymentRequestStatus @default(OPEN)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  paidAt      DateTime?
+  lead        Lead                 @relation(fields: [leadId], references: [id])
+  createdBy   User                 @relation("PaymentRequestCreatedBy", fields: [createdById], references: [id])
+  attempts    PaymentAttempt[]
+
+  @@index([leadId, purpose, status])
+  @@index([createdById])
+  @@map("payment_requests")
+}
+
+model PaymentAttempt {
+  id           String               @id @default(cuid())
+  requestId    String
+  transactionId String              @unique
+  validationId String?              @unique
+  status       PaymentAttemptStatus @default(INITIATED)
+  gatewaySessionKey String?
+  gatewayUrl   String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  request      PaymentRequest       @relation(fields: [requestId], references: [id])
+
+  @@index([requestId, status])
+  @@map("payment_attempts")
+}

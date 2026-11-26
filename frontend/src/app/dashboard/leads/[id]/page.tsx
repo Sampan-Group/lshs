@@ -288,6 +288,7 @@ export default function LeadDetailPage() {
 
         {/* Badges */}
         <div className="flex flex-wrap items-center gap-2 ml-12">
+          <Link href={`/dashboard/payments?leadId=${lead.id}`} className="inline-flex items-center rounded-md bg-[#0B73B9] px-3 py-1.5 text-xs font-semibold text-white">Create payment link</Link>
           <span className={`inline-flex items-center px-3 py-1 rounded-md border text-xs font-bold ${stageColors[lead.stage]}`}>{formatStage(lead.stage)}</span>
           <span className={`inline-flex items-center px-3 py-1 rounded-md border text-xs font-bold ${statusColors[lead.status]}`}>{formatStage(lead.status)}</span>
           {lead.temperature && <span className={`inline-flex items-center px-3 py-1 rounded-md border text-xs font-bold ${tempColors[lead.temperature]}`}>{lead.temperature}</span>}

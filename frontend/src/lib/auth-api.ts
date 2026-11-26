@@ -5,6 +5,7 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
   sendPasswordResetEmail,
+  sendEmailVerification,
   signOut as firebaseSignOut,
 } from "firebase/auth"
 import { firebaseAuth, isFirebaseConfigured } from "./firebase"
@@ -100,8 +101,17 @@ export async function authenticateUser(
     }
   }
 
+  if (mode === "signup" && !credential.user.emailVerified) {
+    try {
+      await sendEmailVerification(credential.user)
+    } finally {
+      await firebaseSignOut(firebaseAuth)
+    }
+    throw new Error("Verification email sent. Open the link in your inbox, then return here and continue with your email.")
+  }
+
   // Step 2: Get Firebase ID token
-  const idToken = await credential.user.getIdToken()
+  const idToken = await credential.user.getIdToken(true)
 
   // Step 3: Send to backend → creates/finds user + sets httpOnly cookie
   const endpoint = mode === "signup" ? "/auth/signup" : "/auth/signin"
@@ -146,15 +156,14 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
 
 /* ─── SIGN OUT ──────────────────────────────────────── */
 export async function signOutUser(): Promise<void> {
-  if (firebaseAuth) {
-    try { await firebaseSignOut(firebaseAuth) } catch {}
+  const response = await fetch(`${apiUrl}/auth/signout`, {
+    method: "POST",
+    credentials: "include",
+  })
+  if (!response.ok) {
+    throw new Error("Unable to log out. Please try again.")
   }
-  try {
-    await fetch(`${apiUrl}/auth/signout`, {
-      method: "POST",
-      credentials: "include",
-    })
-  } catch {}
+  if (firebaseAuth) await firebaseSignOut(firebaseAuth)
 }
 
 /* ─── RESET PASSWORD ────────────────────────────────── */

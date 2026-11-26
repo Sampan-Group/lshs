@@ -6,7 +6,7 @@ export const apiUrl = `${apiRoot}/api`;
 export const leadsApiUrl = `${apiUrl}/leads`;
 
 export async function fetchApi<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
+  const response = await fetch(url, { ...init, credentials: "include" });
   const result: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {

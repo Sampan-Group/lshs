@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "../contexts/AuthContext";
 import {
   LayoutDashboard,
   Users,
@@ -18,6 +20,7 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
+  CreditCard,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -66,6 +69,7 @@ const navSections: NavSection[] = [
         ],
       },
       { label: "Activities", href: "/dashboard/activities", icon: Activity, badge: "89" },
+      { label: "Payment links", href: "/dashboard/payments", icon: CreditCard },
       {
         label: "Follow-ups",
         href: "/dashboard/follow-ups",
@@ -84,15 +88,7 @@ const navSections: NavSection[] = [
     items: [
       { label: "Sources", href: "/dashboard/sources", icon: Tag },
       { label: "Programs", href: "/dashboard/programs", icon: GraduationCap },
-      {
-        label: "Users",
-        href: "/dashboard/users",
-        icon: Users,
-        children: [
-          { label: "All Users", href: "/dashboard/users" },
-          { label: "Add User", href: "/dashboard/users/new", badge: "New", badgeColor: "gold" },
-        ],
-      },
+      { label: "Staff access", href: "/dashboard/users", icon: Users },
       { label: "Settings", href: "/dashboard/settings", icon: Settings },
     ],
   },
@@ -112,6 +108,41 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { user, loading, signOut } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const queryClient = useQueryClient();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
+
+  useEffect(() => {
+    if (!loading && !user) router.replace("/signin");
+  }, [loading, user, router]);
+
+  const handleSignOut = async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    setSignOutError("");
+    try {
+      await signOut();
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      router.replace("/signin");
+    } catch {
+      setSignOutError("Unable to log out. Please try again.");
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
+  const displayName = user?.name.trim() || user?.email || "Your account";
+  const roleLabel = user?.role.toLowerCase().replace(/_/g, " ") || "";
+  const canAccessCrm = user?.role === "ADMIN" || user?.role === "MANAGER" || user?.role === "SALES_PERSON";
+  const canManageCrm = user?.role === "ADMIN" || user?.role === "MANAGER";
+  const managementPage = /^\/dashboard\/(sources|programs|users|settings)(\/|$)/.test(pathname);
+  const usersPage = /^\/dashboard\/users(\/|$)/.test(pathname);
+  const initials = displayName.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+
   // Mobile off-canvas drawer (existing)
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -124,7 +155,7 @@ export default function DashboardLayout({
   // Expanded-section / expanded-item state (existing)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     CRM: true,
-    Management: false,
+    Management: true,
   });
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
@@ -133,8 +164,6 @@ export default function DashboardLayout({
 
   // User popover in collapsed mode (new)
   const [userPopoverOpen, setUserPopoverOpen] = useState(false);
-
-  const pathname = usePathname();
 
   /* ─── Load collapsed preference from localStorage ───
      Runs only after mount to avoid hydration mismatch.
@@ -236,6 +265,35 @@ export default function DashboardLayout({
   const PageIcon = getPageIcon();
   const isCollapsed = mounted && sidebarCollapsed;
 
+  if (loading || !user) {
+    return (
+      <div role="status" className="min-h-screen flex items-center justify-center bg-slate-50 text-sm text-slate-600">
+        {loading ? "Loading your account..." : "Redirecting to sign in..."}
+      </div>
+    );
+  }
+
+  if (!canAccessCrm) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-6 text-center">
+        <h1 className="text-2xl font-semibold text-slate-900">CRM access is limited to staff</h1>
+        <p className="max-w-md text-sm text-slate-600">Your account does not have permission to use this dashboard. Please contact an administrator if you need access.</p>
+        <button type="button" onClick={handleSignOut} disabled={isSigningOut} className="rounded-lg bg-[#0B73B9] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{isSigningOut ? "Logging out..." : "Log out"}</button>
+        {signOutError && <p role="alert" className="text-sm text-red-700">{signOutError}</p>}
+      </main>
+    );
+  }
+
+  if ((managementPage && !canManageCrm) || (usersPage && user.role !== "ADMIN")) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-6 text-center">
+        <h1 className="text-2xl font-semibold text-slate-900">Access restricted</h1>
+        <p className="text-sm text-slate-600">Your account cannot access this management section.</p>
+        <Link href="/dashboard" className="rounded-lg bg-[#0B73B9] px-5 py-2.5 text-sm font-semibold text-white">Back to dashboard</Link>
+      </main>
+    );
+  }
+
   // Wrapping the layout in NotificationProvider to handle global state & socket connections
   return (
     <NotificationProvider>
@@ -293,7 +351,7 @@ export default function DashboardLayout({
 
             {/* ─── Navigation ─── */}
             <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 sidebar-scroll" aria-label="Main">
-              {navSections.map((section) => {
+              {navSections.filter((section) => canManageCrm || section.title !== "Management").map((section) => {
                 const isSectionExpanded = isCollapsed ? true : expandedSections[section.title];
 
                 return (
@@ -330,7 +388,7 @@ export default function DashboardLayout({
                         }`}
                     >
                       <div className="overflow-hidden">
-                        {section.items.map((item) => {
+                        {section.items.filter((item) => user.role === "ADMIN" || item.href !== "/dashboard/users").map((item) => {
                           const Icon = item.icon;
                           const active = isActive(item.href);
                           const hasChildren = !!item.children?.length;
@@ -541,6 +599,20 @@ export default function DashboardLayout({
             </nav>
 
             {/* ─── Quick Add Button ─── */}
+            {user.role === "ADMIN" && (
+              <div className="px-3 pb-2">
+                <Link
+                  href="/dashboard/users#add-staff"
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors w-full ${isCollapsed ? "lg:w-[48px] lg:h-[48px] lg:mx-auto lg:p-0" : ""}`}
+                  title="Add User"
+                  aria-label="Add User"
+                >
+                  <Users size={isCollapsed ? 18 : 16} />
+                  <span className={`whitespace-nowrap ${isCollapsed ? "lg:hidden" : ""}`}>Add User</span>
+                </Link>
+              </div>
+            )}
             <div className="px-3 pb-2">
               <Link
                 href="/dashboard/leads/new"
@@ -565,15 +637,19 @@ export default function DashboardLayout({
                   }`}
               >
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#f4d210] to-[#D4AF37] flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-bold text-[#001B30]">JA</span>
+                  <span className="text-xs font-bold text-[#001B30]">{initials}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">James Anderson</p>
-                  <p className="text-[10px] text-white/40 uppercase tracking-wider">Manager</p>
+                  <p className="text-sm font-semibold text-white truncate">{displayName}</p>
+                  <p className="text-[10px] text-white/40 uppercase tracking-wider">{roleLabel}</p>
                 </div>
                 <button
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
                   className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 transition-colors duration-200"
                   aria-label="Logout"
+                  title={isSigningOut ? "Logging out..." : "Log out"}
                 >
                   <LogOut size={15} strokeWidth={1.5} />
                 </button>
@@ -588,13 +664,13 @@ export default function DashboardLayout({
                   aria-label="User menu"
                   aria-expanded={userPopoverOpen}
                 >
-                  <span className="text-xs font-bold text-[#001B30]">JA</span>
+                  <span className="text-xs font-bold text-[#001B30]">{initials}</span>
                 </button>
 
                 {/* Tooltip on hover (when popover is closed) */}
                 {!userPopoverOpen && (
                   <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 whitespace-nowrap bg-slate-900 text-white text-xs font-medium px-2.5 py-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg z-50">
-                    James Anderson · Manager
+                    {displayName} · {roleLabel}
                   </div>
                 )}
 
@@ -608,15 +684,15 @@ export default function DashboardLayout({
                 >
                   <div className="flex items-center gap-3 mb-3 pb-3 border-b border-white/5">
                     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#f4d210] to-[#D4AF37] flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-bold text-[#001B30]">JA</span>
+                      <span className="text-xs font-bold text-[#001B30]">{initials}</span>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">James Anderson</p>
-                      <p className="text-[10px] text-white/40 uppercase tracking-wider">Manager</p>
+                      <p className="text-sm font-semibold text-white truncate">{displayName}</p>
+                      <p className="text-[10px] text-white/40 uppercase tracking-wider">{roleLabel}</p>
                     </div>
                   </div>
-                  <button className="flex items-center gap-2 w-full px-2 py-2 rounded-md text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors">
-                    <LogOut size={14} strokeWidth={1.5} /> Logout
+                  <button type="button" onClick={handleSignOut} disabled={isSigningOut} className="flex items-center gap-2 w-full px-2 py-2 rounded-md text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50">
+                    <LogOut size={14} strokeWidth={1.5} /> {isSigningOut ? "Logging out..." : "Log out"}
                   </button>
                 </div>
               </div>
@@ -665,20 +741,38 @@ export default function DashboardLayout({
             </div>
 
             <div className="flex items-center gap-2 ml-auto">
+              {user.role === "ADMIN" && (
+                <Link href="/dashboard/users#add-staff" className="hidden md:inline-flex items-center rounded-lg bg-[#0B73B9] px-3 py-2 text-xs font-semibold text-white hover:bg-[#085C92]">Add User</Link>
+              )}
               {/* Replaced static button with the dynamic NotificationBell component */}
               <NotificationBell />
               
               <div className="hidden sm:flex items-center gap-2 pl-3 ml-1 border-l border-slate-200">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0B73B9] to-[#085C92] flex items-center justify-center">
-                  <span className="text-xs font-bold text-white">JA</span>
+                  <span className="text-xs font-bold text-white">{initials}</span>
                 </div>
-                <ChevronDown size={14} className="text-slate-400" />
+                <div className="max-w-40 min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-900">{displayName}</p>
+                  <p className="text-xs capitalize text-slate-500">{roleLabel}</p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                disabled={isSigningOut}
+                className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                <LogOut size={16} />
+                {isSigningOut ? "Logging out..." : "Log out"}
+              </button>
             </div>
           </header>
 
           {/* ─── Page Content ─── */}
-          <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden">{children}</main>
+          <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden">
+            {signOutError && <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{signOutError}</p>}
+            {children}
+          </main>
         </div>
 
         {/* ═══════════════════ SCROLLBAR STYLE ═══════════════════ */}

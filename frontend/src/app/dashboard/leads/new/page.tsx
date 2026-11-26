@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { dashboardQueryKeys, fetchApi, leadsApiUrl } from "../../api";
+import { useAuth } from "@/app/contexts/AuthContext";
 import {
   ChevronLeft,
   CheckCircle2,
@@ -29,6 +30,7 @@ type LeadMetadata = {
 
 export default function CreateLeadPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const metadataQuery = useQuery({
     queryKey: dashboardQueryKeys.leadMetadata,
@@ -110,7 +112,7 @@ export default function CreateLeadPage() {
         priority: formData.priority || undefined,
         temperature: formData.temperature || undefined,
         quality: formData.quality || undefined,
-        assignedToId: formData.assignedToId ? Number(formData.assignedToId) : undefined,
+        assignedToId: formData.assignedToId === "unassigned" ? null : formData.assignedToId ? Number(formData.assignedToId) : undefined,
         programIds: formData.programIds,
         notes: formData.notes || undefined,
       };
@@ -334,9 +336,10 @@ export default function CreateLeadPage() {
           <div className="space-y-5">
             <div>
               <label className={labelClasses}>Assign To</label>
-              <select name="assignedToId" value={formData.assignedToId} onChange={handleChange} disabled={isSubmitting || isSubmitted} className={selectClasses} style={selectStyle}>
-                <option value="">Leave unassigned</option>
-                {(metadata?.users ?? []).map((u) => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
+              <select name="assignedToId" value={formData.assignedToId} onChange={handleChange} disabled={isSubmitting || isSubmitted || user?.role === "SALES_PERSON"} className={selectClasses} style={selectStyle}>
+                <option value="">Assigned to you automatically</option>
+                {user?.role !== "SALES_PERSON" && <option value="unassigned">Leave unassigned</option>}
+                {user?.role !== "SALES_PERSON" && (metadata?.users ?? []).map((u) => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
               </select>
             </div>
             <div>
